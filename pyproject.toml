@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "roadtrip"
+version = "0.1.0"
+description = "CLI road trip planner"
+requires-python = ">=3.10"
+
+[project.scripts]
+roadtrip = "roadtrip.cli:main"
