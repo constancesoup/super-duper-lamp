@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadtrip Planner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+    .header { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 1.5rem 2rem; }
+    .header h1 { font-size: 1.5rem; }
+    .header p { opacity: 0.85; margin-top: 0.25rem; }
+    .container { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+    .card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #1e293b; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    input, select, button { font-size: 0.9rem; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #d1d5db; }
+    input:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+    input { flex: 1; min-width: 120px; }
+    button { cursor: pointer; border: none; font-weight: 500; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-danger { background: #ef4444; color: white; font-size: 0.8rem; padding: 0.3rem 0.6rem; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { font-size: 0.8rem; padding: 0.3rem 0.6rem; }
+    .trip-list { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .trip-btn { background: #e2e8f0; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+    .trip-btn.active { border-color: #2563eb; background: #dbeafe; }
+    .trip-btn:hover { background: #cbd5e1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+    th { font-weight: 600; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 0.5rem; }
+    .stat { text-align: center; padding: 0.75rem; background: #f8fafc; border-radius: 8px; }
+    .stat .value { font-size: 1.3rem; font-weight: 700; color: #2563eb; }
+    .stat .label { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .checklist-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; }
+    .checklist-item input[type="checkbox"] { width: 18px; height: 18px; }
+    .checklist-item.checked span { text-decoration: line-through; color: #94a3b8; }
+    .empty { color: #94a3b8; font-style: italic; padding: 1rem 0; }
+    .hidden { display: none; }
+    #trip-detail { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Roadtrip Planner</h1>
+    <p>Plan your stops, track fuel costs, and organize your journey</p>
+  </div>
+
+  <div class="container">
+    <!-- Trip Selection -->
+    <div class="card">
+      <h2>Your Trips</h2>
+      <div id="trip-list" class="trip-list"></div>
+      <div class="row">
+        <input id="new-trip-name" placeholder="New trip name..." />
+        <button class="btn-primary" onclick="createTrip()">Create Trip</button>
+      </div>
+    </div>
+
+    <!-- Trip Detail -->
+    <div id="trip-detail">
+      <!-- Summary -->
+      <div class="card">
+        <h2>Trip Summary: <span id="trip-title"></span></h2>
+        <div id="summary-stats" class="summary-grid"></div>
+        <div id="legs-section" class="hidden">
+          <table>
+            <thead><tr><th>Leg</th><th>From</th><th>To</th><th>Distance</th><th>Time</th></tr></thead>
+            <tbody id="legs-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Stops -->
+      <div class="card">
+        <h2>Stops</h2>
+        <div id="stops-list"></div>
+        <div class="row" style="margin-top: 0.75rem;">
+          <input id="stop-name" placeholder="Stop name (e.g. Denver, CO)" />
+          <input id="stop-lat" placeholder="Latitude" type="number" step="any" style="max-width:110px" />
+          <input id="stop-lon" placeholder="Longitude" type="number" step="any" style="max-width:110px" />
+          <button class="btn-primary" onclick="addStop()">Add Stop</button>
+        </div>
+      </div>
+
+      <!-- Fuel Config -->
+      <div class="card">
+        <h2>Fuel Settings</h2>
+        <div class="row">
+          <input id="fuel-mpg" placeholder="MPG" type="number" step="any" style="max-width:100px" />
+          <input id="fuel-price" placeholder="$/gallon" type="number" step="any" style="max-width:100px" />
+          <button class="btn-primary" onclick="updateFuel()">Update</button>
+        </div>
+      </div>
+
+      <!-- Checklist -->
+      <div class="card">
+        <h2>Packing Checklist</h2>
+        <div id="checklist-items"></div>
+        <div class="row" style="margin-top: 0.75rem;">
+          <input id="checklist-item" placeholder="Add item..." />
+          <button class="btn-primary" onclick="addChecklistItem()">Add</button>
+        </div>
+      </div>
+
+      <!-- Daily Itinerary -->
+      <div class="card">
+        <h2>Daily Itinerary</h2>
+        <div id="days-list"></div>
+        <div class="row" style="margin-top: 0.75rem;">
+          <input id="day-num" placeholder="Day #" type="number" style="max-width:80px" />
+          <input id="day-stops" placeholder="Stop indices (e.g. 0,1,2)" />
+          <button class="btn-primary" onclick="addDay()">Add Day</button>
+        </div>
+      </div>
+
+      <!-- Delete Trip -->
+      <div class="card" style="text-align: center;">
+        <button class="btn-danger" onclick="deleteTrip()">Delete This Trip</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentTrip = null;
+
+    async function api(url, opts = {}) {
+      if (opts.body) opts.headers = { 'Content-Type': 'application/json', ...opts.headers };
+      const res = await fetch(url, opts);
+      return res.json();
+    }
+
+    async function loadTrips() {
+      const trips = await api('/api/trips');
+      const el = document.getElementById('trip-list');
+      if (trips.length === 0) {
+        el.innerHTML = '<div class="empty">No trips yet. Create one below!</div>';
+        document.getElementById('trip-detail').style.display = 'none';
+        return;
+      }
+      el.innerHTML = trips.map(t =>
+        `<div class="trip-btn ${t === currentTrip ? 'active' : ''}" onclick="selectTrip('${t}')">${t}</div>`
+      ).join('') + `<div class="trip-btn btn-danger" style="margin-left:auto" onclick="deleteTrip()">Delete</div>`;
+      if (currentTrip && trips.includes(currentTrip)) loadTrip(currentTrip);
+    }
+
+    async function selectTrip(name) {
+      currentTrip = name;
+      await loadTrips();
+      await loadTrip(name);
+    }
+
+    async function loadTrip(name) {
+      const trip = await api(`/api/trips/${encodeURIComponent(name)}`);
+      document.getElementById('trip-detail').style.display = 'block';
+      document.getElementById('trip-title').textContent = trip.name;
+
+      // Summary stats
+      const stats = document.getElementById('summary-stats');
+      if (trip.total_distance_miles) {
+        stats.innerHTML = `
+          <div class="stat"><div class="value">${trip.stops.length}</div><div class="label">Stops</div></div>
+          <div class="stat"><div class="value">${trip.total_distance_miles} mi</div><div class="label">Total Distance</div></div>
+          <div class="stat"><div class="value">${trip.total_drive_time}</div><div class="label">Drive Time</div></div>
+          <div class="stat"><div class="value">${trip.fuel_gallons} gal</div><div class="label">Fuel Needed</div></div>
+          <div class="stat"><div class="value">$${trip.fuel_cost}</div><div class="label">Fuel Cost</div></div>
+        `;
+      } else {
+        stats.innerHTML = `<div class="stat"><div class="value">${trip.stops.length}</div><div class="label">Stops</div></div>
+          <div class="empty" style="grid-column:1/-1">Add at least 2 stops to see route details.</div>`;
+      }
+
+      // Legs
+      const legsSection = document.getElementById('legs-section');
+      const legsBody = document.getElementById('legs-body');
+      if (trip.legs && trip.legs.length > 0) {
+        legsSection.classList.remove('hidden');
+        legsBody.innerHTML = trip.legs.map(l =>
+          `<tr><td>${l.leg}</td><td>${l.from}</td><td>${l.to}</td><td>${l.distance_miles} mi</td><td>${l.drive_time}</td></tr>`
+        ).join('');
+      } else {
+        legsSection.classList.add('hidden');
+      }
+
+      // Stops
+      const stopsList = document.getElementById('stops-list');
+      if (trip.stops.length === 0) {
+        stopsList.innerHTML = '<div class="empty">No stops added yet.</div>';
+      } else {
+        stopsList.innerHTML = `<table><thead><tr><th>#</th><th>Name</th><th>Lat</th><th>Lon</th><th></th></tr></thead><tbody>` +
+          trip.stops.map(s =>
+            `<tr><td>${s.index}</td><td>${s.name}</td><td>${s.lat}</td><td>${s.lon}</td>
+             <td><button class="btn-danger btn-sm" onclick="removeStop(${s.index})">Remove</button></td></tr>`
+          ).join('') + `</tbody></table>`;
+      }
+
+      // Fuel
+      document.getElementById('fuel-mpg').value = trip.fuel_config.mpg;
+      document.getElementById('fuel-price').value = trip.fuel_config.price_per_gallon;
+
+      // Checklist
+      const checklistEl = document.getElementById('checklist-items');
+      if (trip.checklist.length === 0) {
+        checklistEl.innerHTML = '<div class="empty">No items in checklist.</div>';
+      } else {
+        checklistEl.innerHTML = trip.checklist.map((c, i) =>
+          `<div class="checklist-item ${c.checked ? 'checked' : ''}">
+            <input type="checkbox" ${c.checked ? 'checked' : ''} onchange="toggleCheck(${i}, this.checked)" />
+            <span>${c.item}</span>
+            <button class="btn-danger btn-sm" onclick="removeChecklistItem(${i})">Remove</button>
+          </div>`
+        ).join('');
+      }
+
+      // Days
+      const daysList = document.getElementById('days-list');
+      if (trip.days.length === 0) {
+        daysList.innerHTML = '<div class="empty">No daily itinerary set.</div>';
+      } else {
+        daysList.innerHTML = trip.days.map(d => {
+          let info = `<strong>Day ${d.day}:</strong> ${d.stops.join(' &rarr; ')}`;
+          if (d.distance_miles) info += ` &mdash; ${d.distance_miles} mi, ${d.drive_time}, $${d.fuel_cost}`;
+          return `<div style="padding:0.4rem 0;display:flex;align-items:center;gap:0.5rem">${info}
+            <button class="btn-danger btn-sm" onclick="removeDay(${d.day})">Remove</button></div>`;
+        }).join('');
+      }
+    }
+
+    async function createTrip() {
+      const name = document.getElementById('new-trip-name').value.trim();
+      if (!name) return;
+      await api('/api/trips', { method: 'POST', body: JSON.stringify({ name }) });
+      document.getElementById('new-trip-name').value = '';
+      currentTrip = name;
+      await loadTrips();
+      await loadTrip(name);
+    }
+
+    async function deleteTrip() {
+      if (!currentTrip || !confirm(`Delete trip "${currentTrip}"?`)) return;
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}`, { method: 'DELETE' });
+      currentTrip = null;
+      document.getElementById('trip-detail').style.display = 'none';
+      await loadTrips();
+    }
+
+    async function addStop() {
+      const name = document.getElementById('stop-name').value.trim();
+      const lat = parseFloat(document.getElementById('stop-lat').value);
+      const lon = parseFloat(document.getElementById('stop-lon').value);
+      if (!name || isNaN(lat) || isNaN(lon)) return alert('Fill in stop name, latitude, and longitude.');
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/stops`, {
+        method: 'POST', body: JSON.stringify({ name, lat, lon })
+      });
+      document.getElementById('stop-name').value = '';
+      document.getElementById('stop-lat').value = '';
+      document.getElementById('stop-lon').value = '';
+      await loadTrip(currentTrip);
+    }
+
+    async function removeStop(index) {
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/stops/${index}`, { method: 'DELETE' });
+      await loadTrip(currentTrip);
+    }
+
+    async function updateFuel() {
+      const mpg = parseFloat(document.getElementById('fuel-mpg').value);
+      const price = parseFloat(document.getElementById('fuel-price').value);
+      if (isNaN(mpg) || isNaN(price)) return;
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/fuel`, {
+        method: 'PUT', body: JSON.stringify({ mpg, price_per_gallon: price })
+      });
+      await loadTrip(currentTrip);
+    }
+
+    async function addChecklistItem() {
+      const item = document.getElementById('checklist-item').value.trim();
+      if (!item) return;
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/checklist`, {
+        method: 'POST', body: JSON.stringify({ item })
+      });
+      document.getElementById('checklist-item').value = '';
+      await loadTrip(currentTrip);
+    }
+
+    async function removeChecklistItem(index) {
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/checklist/${index}`, { method: 'DELETE' });
+      await loadTrip(currentTrip);
+    }
+
+    async function toggleCheck(index, checked) {
+      const action = checked ? 'check' : 'uncheck';
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/checklist/${index}/${action}`, { method: 'PUT' });
+      await loadTrip(currentTrip);
+    }
+
+    async function addDay() {
+      const day = parseInt(document.getElementById('day-num').value);
+      const stopsStr = document.getElementById('day-stops').value.trim();
+      if (isNaN(day) || !stopsStr) return alert('Enter a day number and stop indices.');
+      const stop_indices = stopsStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/days`, {
+        method: 'POST', body: JSON.stringify({ day, stop_indices })
+      });
+      document.getElementById('day-num').value = '';
+      document.getElementById('day-stops').value = '';
+      await loadTrip(currentTrip);
+    }
+
+    async function removeDay(dayNum) {
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/days/${dayNum}`, { method: 'DELETE' });
+      await loadTrip(currentTrip);
+    }
+
+    // Init
+    loadTrips();
+  </script>
+</body>
+</html>
