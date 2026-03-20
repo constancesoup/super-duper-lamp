@@ -3,176 +3,636 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roadtrip Planner</title>
+  <title>Road Trip Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
+    /* === Reset & Base === */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
-    .header { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 1.5rem 2rem; }
-    .header h1 { font-size: 1.5rem; }
-    .header p { opacity: 0.85; margin-top: 0.25rem; }
-    .container { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
-    .card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #1e293b; }
-    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    input, select, button { font-size: 0.9rem; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #d1d5db; }
-    input:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
-    input { flex: 1; min-width: 120px; }
-    button { cursor: pointer; border: none; font-weight: 500; }
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-primary:hover { background: #1d4ed8; }
-    .btn-danger { background: #ef4444; color: white; font-size: 0.8rem; padding: 0.3rem 0.6rem; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-sm { font-size: 0.8rem; padding: 0.3rem 0.6rem; }
-    .trip-list { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .trip-btn { background: #e2e8f0; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
-    .trip-btn.active { border-color: #2563eb; background: #dbeafe; }
-    .trip-btn:hover { background: #cbd5e1; }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
-    th { font-weight: 600; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 0.5rem; }
-    .stat { text-align: center; padding: 0.75rem; background: #f8fafc; border-radius: 8px; }
-    .stat .value { font-size: 1.3rem; font-weight: 700; color: #2563eb; }
-    .stat .label { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
-    .checklist-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; }
-    .checklist-item input[type="checkbox"] { width: 18px; height: 18px; }
-    .checklist-item.checked span { text-decoration: line-through; color: #94a3b8; }
-    .empty { color: #94a3b8; font-style: italic; padding: 1rem 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F7F5F3; color: #1A1A2E; overflow: hidden; height: 100vh;
+    }
+
+    /* === Color Palette === */
+    :root {
+      --coral: #FF6B35;
+      --purple: #7B2FBE;
+      --pink: #E91E8C;
+      --yellow: #FFB800;
+      --teal: #00BFA6;
+      --navy: #1A1A2E;
+      --bg: #F7F5F3;
+      --card: #ffffff;
+    }
+
+    /* === Header === */
+    .app-header {
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1rem;
+      box-shadow: 0 2px 10px rgba(123,47,190,0.3);
+    }
+    .app-header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.5px; }
+    .app-header p { font-size: 0.8rem; opacity: 0.85; }
+
+    /* === Layout === */
+    .app-layout {
+      display: flex; height: calc(100vh - 52px);
+    }
+    .sidebar {
+      width: 380px; min-width: 380px; overflow-y: auto; padding: 1rem;
+      background: var(--bg);
+    }
+    .map-container {
+      flex: 1; position: relative;
+    }
+    #map { width: 100%; height: 100%; z-index: 1; }
+
+    /* === Scrollbar === */
+    .sidebar::-webkit-scrollbar { width: 6px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+    /* === Cards === */
+    .card {
+      background: var(--card); border-radius: 14px; padding: 1.25rem;
+      margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-left: 4px solid #e0e0e0;
+      animation: fadeInUp 0.3s ease;
+    }
+    .card-trips { border-left-color: var(--purple); }
+    .card-stops { border-left-color: var(--coral); }
+    .card-stats { border-left-color: var(--teal); }
+    .card-fuel { border-left-color: var(--yellow); }
+    .card-checklist { border-left-color: var(--pink); }
+    .card-itinerary { border-left-color: var(--purple); }
+    .card-danger { border-left-color: #ef4444; }
+
+    .card h2 {
+      font-size: 0.95rem; font-weight: 700; margin-bottom: 0.85rem;
+      color: var(--navy); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .card h2::before { margin-right: 0.4rem; }
+    .card-trips h2::before { content: "\1F697"; }
+    .card-stops h2::before { content: "\1F4CD"; }
+    .card-stats h2::before { content: "\1F4CA"; }
+    .card-fuel h2::before { content: "\26FD"; }
+    .card-checklist h2::before { content: "\2705"; }
+    .card-itinerary h2::before { content: "\1F4C5"; }
+
+    /* === Buttons === */
+    button {
+      cursor: pointer; border: none; font-weight: 600; font-size: 0.85rem;
+      border-radius: 20px; padding: 0.5rem 1.1rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--coral), var(--pink));
+      color: white;
+      box-shadow: 0 3px 12px rgba(255,107,53,0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 5px 18px rgba(255,107,53,0.4); }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--purple), #9b59b6);
+      color: white;
+      box-shadow: 0 3px 12px rgba(123,47,190,0.25);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white; font-size: 0.8rem; padding: 0.35rem 0.75rem;
+      box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+    }
+
+    .btn-sm { font-size: 0.75rem; padding: 0.3rem 0.65rem; }
+
+    /* === Inputs === */
+    input[type="text"], input[type="number"], input {
+      font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 10px;
+      border: 2px solid #e5e7eb; background: #fafafa;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus {
+      outline: none; border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(123,47,190,0.15); background: white;
+    }
+
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .row input { flex: 1; min-width: 100px; }
+
+    /* === Trip Pills === */
+    .trip-list { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+    .trip-pill {
+      background: #f0ecf9; padding: 0.45rem 1rem; border-radius: 20px;
+      cursor: pointer; border: 2px solid transparent; font-size: 0.85rem;
+      font-weight: 500; color: var(--purple); transition: all 0.2s;
+    }
+    .trip-pill:hover { background: #e4daf5; }
+    .trip-pill.active {
+      border-color: var(--purple); background: var(--purple); color: white;
+      box-shadow: 0 3px 12px rgba(123,47,190,0.3);
+    }
+
+    /* === Stop Cards === */
+    .stop-card {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.75rem; margin-bottom: 0.5rem;
+      background: #fafafa; border-radius: 10px;
+      transition: background 0.2s;
+      animation: slideIn 0.25s ease;
+    }
+    .stop-card:hover { background: #f0f0f0; }
+    .stop-badge {
+      width: 28px; height: 28px; border-radius: 50%; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.75rem; flex-shrink: 0;
+    }
+    .stop-info { flex: 1; }
+    .stop-name { font-weight: 600; font-size: 0.85rem; }
+    .stop-coords { font-size: 0.7rem; color: #94a3b8; }
+    .stop-notes { font-size: 0.75rem; color: #64748b; font-style: italic; margin-top: 2px; }
+
+    /* === Stats Grid === */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 0.6rem;
+    }
+    .stat-card {
+      text-align: center; padding: 0.65rem; border-radius: 10px;
+      background: linear-gradient(135deg, #f8f7ff, #f0ecf9);
+    }
+    .stat-value { font-size: 1.2rem; font-weight: 800; color: var(--purple); }
+    .stat-label { font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.2rem; }
+
+    /* stat color variations */
+    .stat-coral { background: linear-gradient(135deg, #fff5f0, #ffe8de); }
+    .stat-coral .stat-value { color: var(--coral); }
+    .stat-teal { background: linear-gradient(135deg, #f0fdf9, #d5f5ee); }
+    .stat-teal .stat-value { color: var(--teal); }
+    .stat-yellow { background: linear-gradient(135deg, #fffdf0, #fff3cd); }
+    .stat-yellow .stat-value { color: #d97706; }
+    .stat-pink { background: linear-gradient(135deg, #fef0f8, #fdd5ea); }
+    .stat-pink .stat-value { color: var(--pink); }
+
+    /* === Legs table === */
+    .legs-table { width: 100%; border-collapse: collapse; margin-top: 0.6rem; }
+    .legs-table th {
+      text-align: left; padding: 0.4rem 0.5rem; font-size: 0.7rem;
+      text-transform: uppercase; color: #94a3b8; border-bottom: 2px solid #f0f0f0;
+    }
+    .legs-table td {
+      padding: 0.4rem 0.5rem; font-size: 0.8rem; border-bottom: 1px solid #f5f5f5;
+    }
+
+    /* === Checklist === */
+    .checklist-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.45rem 0; border-bottom: 1px solid #f5f5f5;
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-cb {
+      appearance: none; width: 20px; height: 20px; border-radius: 6px;
+      border: 2px solid var(--pink); cursor: pointer; position: relative;
+      flex-shrink: 0; transition: background 0.2s;
+    }
+    .checklist-cb:checked {
+      background: var(--teal); border-color: var(--teal);
+    }
+    .checklist-cb:checked::after {
+      content: "\2713"; color: white; position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .checklist-item.checked .checklist-text {
+      text-decoration: line-through; color: #94a3b8;
+    }
+    .checklist-text { flex: 1; font-size: 0.85rem; }
+
+    /* === Day Plan === */
+    .day-card {
+      padding: 0.6rem 0.75rem; margin-bottom: 0.5rem;
+      background: #fafafa; border-radius: 10px;
+    }
+    .day-header { font-weight: 700; color: var(--purple); font-size: 0.85rem; }
+    .day-route { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; }
+    .day-stats { font-size: 0.75rem; color: var(--teal); font-weight: 600; margin-top: 0.2rem; }
+
+    /* === Empty State === */
+    .empty { color: #94a3b8; font-style: italic; padding: 0.75rem 0; font-size: 0.85rem; }
+
+    /* === Map Overlay === */
+    .map-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; background: rgba(26,26,46,0.85); color: white;
+      padding: 0.5rem 1.2rem; border-radius: 20px; font-size: 0.8rem;
+      font-weight: 500; pointer-events: none;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    /* === Map Popup Form === */
+    .add-stop-popup { min-width: 220px; }
+    .add-stop-popup input {
+      width: 100%; margin-bottom: 0.5rem; font-size: 0.85rem;
+      padding: 0.45rem 0.6rem; border-radius: 8px; border: 2px solid #e5e7eb;
+    }
+    .add-stop-popup input:focus { border-color: var(--purple); outline: none; }
+    .add-stop-popup .popup-btns { display: flex; gap: 0.4rem; }
+    .add-stop-popup button { flex: 1; padding: 0.4rem; font-size: 0.8rem; border-radius: 8px; }
+    .popup-add-btn {
+      background: var(--coral); color: white; border: none; cursor: pointer; font-weight: 600;
+    }
+    .popup-cancel-btn {
+      background: #e5e7eb; color: #64748b; border: none; cursor: pointer; font-weight: 500;
+    }
+
+    /* === Mobile Toggle === */
+    .mobile-toggle {
+      display: none; position: fixed; bottom: 16px; right: 16px; z-index: 1001;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white; font-size: 1.2rem; border: none;
+      box-shadow: 0 4px 15px rgba(123,47,190,0.4);
+    }
+
     .hidden { display: none; }
-    #trip-detail { display: none; }
+
+    /* === Animations === */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* === Loading Spinner === */
+    .loading {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #e5e7eb; border-top-color: var(--coral);
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+      .app-layout { flex-direction: column-reverse; }
+      .sidebar { width: 100%; min-width: unset; height: 55vh; }
+      .map-container { height: 45vh; }
+      .mobile-toggle { display: flex; align-items: center; justify-content: center; }
+      .sidebar.collapsed { display: none; }
+      .map-container.expanded { height: 100vh; }
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Roadtrip Planner</h1>
-    <p>Plan your stops, track fuel costs, and organize your journey</p>
-  </div>
-
-  <div class="container">
-    <!-- Trip Selection -->
-    <div class="card">
-      <h2>Your Trips</h2>
-      <div id="trip-list" class="trip-list"></div>
-      <div class="row">
-        <input id="new-trip-name" placeholder="New trip name..." />
-        <button class="btn-primary" onclick="createTrip()">Create Trip</button>
-      </div>
+  <header class="app-header">
+    <div>
+      <h1>Road Trip Planner</h1>
+      <p>Click the map. Plan your adventure.</p>
     </div>
+  </header>
 
-    <!-- Trip Detail -->
-    <div id="trip-detail">
-      <!-- Summary -->
-      <div class="card">
-        <h2>Trip Summary: <span id="trip-title"></span></h2>
-        <div id="summary-stats" class="summary-grid"></div>
-        <div id="legs-section" class="hidden">
-          <table>
-            <thead><tr><th>Leg</th><th>From</th><th>To</th><th>Distance</th><th>Time</th></tr></thead>
-            <tbody id="legs-body"></tbody>
-          </table>
-        </div>
-      </div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
 
-      <!-- Stops -->
-      <div class="card">
-        <h2>Stops</h2>
-        <div id="stops-list"></div>
-        <div class="row" style="margin-top: 0.75rem;">
-          <input id="stop-name" placeholder="Stop name (e.g. Denver, CO)" />
-          <input id="stop-lat" placeholder="Latitude" type="number" step="any" style="max-width:110px" />
-          <input id="stop-lon" placeholder="Longitude" type="number" step="any" style="max-width:110px" />
-          <button class="btn-primary" onclick="addStop()">Add Stop</button>
-        </div>
-      </div>
-
-      <!-- Fuel Config -->
-      <div class="card">
-        <h2>Fuel Settings</h2>
+      <!-- Trip Selector -->
+      <div class="card card-trips">
+        <h2>Trips</h2>
+        <div id="trip-list" class="trip-list"></div>
         <div class="row">
-          <input id="fuel-mpg" placeholder="MPG" type="number" step="any" style="max-width:100px" />
-          <input id="fuel-price" placeholder="$/gallon" type="number" step="any" style="max-width:100px" />
-          <button class="btn-primary" onclick="updateFuel()">Update</button>
+          <input id="new-trip-name" placeholder="New trip name..." />
+          <button class="btn-primary" onclick="createTrip()">Create</button>
         </div>
       </div>
 
-      <!-- Checklist -->
-      <div class="card">
-        <h2>Packing Checklist</h2>
-        <div id="checklist-items"></div>
-        <div class="row" style="margin-top: 0.75rem;">
-          <input id="checklist-item" placeholder="Add item..." />
-          <button class="btn-primary" onclick="addChecklistItem()">Add</button>
+      <!-- Trip Detail (hidden until a trip is selected) -->
+      <div id="trip-detail" class="hidden">
+
+        <!-- Stops -->
+        <div class="card card-stops">
+          <h2>Stops</h2>
+          <div id="stops-list"></div>
+          <div class="row" style="margin-top: 0.6rem;">
+            <input id="stop-name" placeholder="Stop name" />
+            <input id="stop-lat" placeholder="Lat" type="number" step="any" style="max-width:80px" />
+            <input id="stop-lon" placeholder="Lon" type="number" step="any" style="max-width:80px" />
+            <button class="btn-primary btn-sm" onclick="addStop()">Add</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="card card-stats" id="stats-card">
+          <h2>Trip Stats</h2>
+          <div id="stats-grid" class="stats-grid"></div>
+          <div id="legs-section" class="hidden">
+            <table class="legs-table">
+              <thead><tr><th>Leg</th><th>From</th><th>To</th><th>Dist</th><th>Time</th></tr></thead>
+              <tbody id="legs-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Fuel Config -->
+        <div class="card card-fuel">
+          <h2>Fuel Settings</h2>
+          <div class="row">
+            <input id="fuel-mpg" placeholder="MPG" type="number" step="any" style="max-width:85px" />
+            <input id="fuel-price" placeholder="$/gal" type="number" step="any" style="max-width:85px" />
+            <button class="btn-secondary btn-sm" onclick="updateFuel()">Update</button>
+          </div>
+        </div>
+
+        <!-- Checklist -->
+        <div class="card card-checklist">
+          <h2>Packing Checklist</h2>
+          <div id="checklist-items"></div>
+          <div class="row" style="margin-top: 0.6rem;">
+            <input id="checklist-item" placeholder="Add item..." />
+            <button class="btn-primary btn-sm" onclick="addChecklistItem()">Add</button>
+          </div>
+        </div>
+
+        <!-- Daily Itinerary -->
+        <div class="card card-itinerary">
+          <h2>Daily Itinerary</h2>
+          <div id="days-list"></div>
+          <div class="row" style="margin-top: 0.6rem;">
+            <input id="day-num" placeholder="Day #" type="number" style="max-width:65px" />
+            <input id="day-stops" placeholder="Stop indices (0,1,2)" />
+            <button class="btn-secondary btn-sm" onclick="addDay()">Add Day</button>
+          </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card card-danger" style="text-align:center;">
+          <button class="btn-danger" onclick="deleteTrip()">Delete This Trip</button>
         </div>
       </div>
+    </aside>
 
-      <!-- Daily Itinerary -->
-      <div class="card">
-        <h2>Daily Itinerary</h2>
-        <div id="days-list"></div>
-        <div class="row" style="margin-top: 0.75rem;">
-          <input id="day-num" placeholder="Day #" type="number" style="max-width:80px" />
-          <input id="day-stops" placeholder="Stop indices (e.g. 0,1,2)" />
-          <button class="btn-primary" onclick="addDay()">Add Day</button>
-        </div>
-      </div>
+    <main class="map-container">
+      <div id="map"></div>
+      <div class="map-hint" id="map-hint">Select or create a trip, then click the map to add stops</div>
+    </main>
 
-      <!-- Delete Trip -->
-      <div class="card" style="text-align: center;">
-        <button class="btn-danger" onclick="deleteTrip()">Delete This Trip</button>
-      </div>
-    </div>
+    <button class="mobile-toggle" id="mobile-toggle" onclick="toggleMobile()">&#9776;</button>
   </div>
 
   <script>
+    // === State ===
     let currentTrip = null;
+    let map = null;
+    let markers = [];
+    let routeLine = null;
+    let lastGeocodeTime = 0;
+    let currentPopup = null;
 
+    const BADGE_COLORS = ['#FF6B35', '#7B2FBE', '#E91E8C', '#00BFA6', '#FFB800', '#3B82F6', '#8B5CF6', '#F43F5E'];
+
+    // === API helper ===
     async function api(url, opts = {}) {
       if (opts.body) opts.headers = { 'Content-Type': 'application/json', ...opts.headers };
       const res = await fetch(url, opts);
       return res.json();
     }
 
+    // === Map Setup ===
+    function initMap() {
+      map = L.map('map', { zoomControl: true }).setView([39.8, -98.5], 4);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
+      }).addTo(map);
+
+      map.on('click', onMapClick);
+    }
+
+    async function onMapClick(e) {
+      if (!currentTrip) return;
+
+      // Rate-limit geocoding (1 req/sec for Nominatim)
+      const now = Date.now();
+      if (now - lastGeocodeTime < 1100) return;
+      lastGeocodeTime = now;
+
+      const { lat, lng: lon } = e.latlng;
+
+      // Close existing popup if any
+      if (currentPopup) { map.closePopup(currentPopup); currentPopup = null; }
+
+      // Try reverse geocoding
+      let placeName = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      try {
+        const geo = await api(`/api/geocode/reverse?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`);
+        if (geo.name) placeName = geo.name;
+      } catch (_) {}
+
+      // Show popup with form
+      const popupContent = `
+        <div class="add-stop-popup">
+          <input id="popup-stop-name" value="${placeName.replace(/"/g, '&quot;')}" />
+          <div class="popup-btns">
+            <button class="popup-add-btn" onclick="confirmMapStop(${lat}, ${lon})">Add Stop</button>
+            <button class="popup-cancel-btn" onclick="map.closePopup()">Cancel</button>
+          </div>
+        </div>
+      `;
+
+      currentPopup = L.popup({ closeButton: false, minWidth: 220 })
+        .setLatLng(e.latlng)
+        .setContent(popupContent)
+        .openOn(map);
+
+      // Focus the input after popup opens
+      setTimeout(() => {
+        const input = document.getElementById('popup-stop-name');
+        if (input) { input.focus(); input.select(); }
+      }, 50);
+    }
+
+    async function confirmMapStop(lat, lon) {
+      const input = document.getElementById('popup-stop-name');
+      const name = input ? input.value.trim() : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      if (!name) return;
+
+      map.closePopup();
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}/stops`, {
+        method: 'POST', body: JSON.stringify({ name, lat: parseFloat(lat.toFixed(6)), lon: parseFloat(lon.toFixed(6)) })
+      });
+      await loadTrip(currentTrip);
+    }
+
+    // === Custom Markers ===
+    function createNumberedIcon(num) {
+      const color = BADGE_COLORS[(num - 1) % BADGE_COLORS.length];
+      return L.divIcon({
+        className: '',
+        html: `<div style="
+          width:32px;height:32px;border-radius:50%;
+          background:${color};color:white;
+          display:flex;align-items:center;justify-content:center;
+          font-weight:700;font-size:13px;
+          box-shadow:0 2px 8px ${color}66;
+          border:2px solid white;
+        ">${num}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -18],
+      });
+    }
+
+    function updateMapMarkers(stops) {
+      // Clear old markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      stops.forEach((stop, i) => {
+        const marker = L.marker([stop.lat, stop.lon], { icon: createNumberedIcon(i + 1) })
+          .addTo(map)
+          .bindPopup(`<strong>${stop.name}</strong><br>
+            <span style="color:#94a3b8;font-size:0.8em">${stop.lat.toFixed(4)}, ${stop.lon.toFixed(4)}</span><br>
+            <a href="#" onclick="event.preventDefault();removeStop(${stop.index})" style="color:#ef4444;font-size:0.85em;">Remove stop</a>`);
+        markers.push(marker);
+      });
+    }
+
+    function updateRouteLine(stops) {
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      if (stops.length < 2) return;
+
+      const coords = stops.map(s => [s.lat, s.lon]);
+      routeLine = L.polyline(coords, {
+        color: '#7B2FBE', weight: 3, opacity: 0.7,
+        dashArray: '10, 8',
+      }).addTo(map);
+    }
+
+    function fitMapToStops(stops) {
+      if (stops.length === 0) return;
+      if (stops.length === 1) {
+        map.setView([stops[0].lat, stops[0].lon], 10);
+        return;
+      }
+      const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lon]));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    // === Trip Management ===
     async function loadTrips() {
       const trips = await api('/api/trips');
       const el = document.getElementById('trip-list');
       if (trips.length === 0) {
-        el.innerHTML = '<div class="empty">No trips yet. Create one below!</div>';
-        document.getElementById('trip-detail').style.display = 'none';
+        el.innerHTML = '<div class="empty">No trips yet. Create one!</div>';
+        document.getElementById('trip-detail').classList.add('hidden');
+        document.getElementById('map-hint').classList.remove('hidden');
         return;
       }
       el.innerHTML = trips.map(t =>
-        `<div class="trip-btn ${t === currentTrip ? 'active' : ''}" onclick="selectTrip('${t}')">${t}</div>`
-      ).join('') + `<div class="trip-btn btn-danger" style="margin-left:auto" onclick="deleteTrip()">Delete</div>`;
+        `<div class="trip-pill ${t === currentTrip ? 'active' : ''}" onclick="selectTrip('${t.replace(/'/g, "\\'")}')">${t}</div>`
+      ).join('');
       if (currentTrip && trips.includes(currentTrip)) loadTrip(currentTrip);
     }
 
     async function selectTrip(name) {
       currentTrip = name;
+      document.getElementById('map-hint').textContent = 'Click the map to add stops';
       await loadTrips();
       await loadTrip(name);
     }
 
+    async function createTrip() {
+      const input = document.getElementById('new-trip-name');
+      const name = input.value.trim();
+      if (!name) return;
+      await api('/api/trips', { method: 'POST', body: JSON.stringify({ name }) });
+      input.value = '';
+      currentTrip = name;
+      await loadTrips();
+      await loadTrip(name);
+    }
+
+    async function deleteTrip() {
+      if (!currentTrip || !confirm(`Delete trip "${currentTrip}"?`)) return;
+      await api(`/api/trips/${encodeURIComponent(currentTrip)}`, { method: 'DELETE' });
+      currentTrip = null;
+      document.getElementById('trip-detail').classList.add('hidden');
+      // Clear map
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      map.setView([39.8, -98.5], 4);
+      document.getElementById('map-hint').textContent = 'Select or create a trip, then click the map to add stops';
+      document.getElementById('map-hint').classList.remove('hidden');
+      await loadTrips();
+    }
+
     async function loadTrip(name) {
       const trip = await api(`/api/trips/${encodeURIComponent(name)}`);
-      document.getElementById('trip-detail').style.display = 'block';
-      document.getElementById('trip-title').textContent = trip.name;
+      document.getElementById('trip-detail').classList.remove('hidden');
 
-      // Summary stats
-      const stats = document.getElementById('summary-stats');
-      if (trip.total_distance_miles) {
-        stats.innerHTML = `
-          <div class="stat"><div class="value">${trip.stops.length}</div><div class="label">Stops</div></div>
-          <div class="stat"><div class="value">${trip.total_distance_miles} mi</div><div class="label">Total Distance</div></div>
-          <div class="stat"><div class="value">${trip.total_drive_time}</div><div class="label">Drive Time</div></div>
-          <div class="stat"><div class="value">${trip.fuel_gallons} gal</div><div class="label">Fuel Needed</div></div>
-          <div class="stat"><div class="value">$${trip.fuel_cost}</div><div class="label">Fuel Cost</div></div>
-        `;
+      if (trip.stops.length > 0) {
+        document.getElementById('map-hint').classList.add('hidden');
       } else {
-        stats.innerHTML = `<div class="stat"><div class="value">${trip.stops.length}</div><div class="label">Stops</div></div>
-          <div class="empty" style="grid-column:1/-1">Add at least 2 stops to see route details.</div>`;
+        document.getElementById('map-hint').textContent = 'Click the map to add stops';
+        document.getElementById('map-hint').classList.remove('hidden');
       }
 
-      // Legs
+      // === Stops ===
+      const stopsList = document.getElementById('stops-list');
+      if (trip.stops.length === 0) {
+        stopsList.innerHTML = '<div class="empty">No stops yet. Click the map to add one!</div>';
+      } else {
+        stopsList.innerHTML = trip.stops.map((s, i) => {
+          const color = BADGE_COLORS[i % BADGE_COLORS.length];
+          return `<div class="stop-card">
+            <div class="stop-badge" style="background:${color}">${i + 1}</div>
+            <div class="stop-info">
+              <div class="stop-name">${s.name}</div>
+              <div class="stop-coords">${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</div>
+              ${s.notes ? `<div class="stop-notes">${s.notes}</div>` : ''}
+            </div>
+            <button class="btn-danger btn-sm" onclick="removeStop(${s.index})">Remove</button>
+          </div>`;
+        }).join('');
+      }
+
+      // === Stats ===
+      const statsGrid = document.getElementById('stats-grid');
+      if (trip.total_distance_miles) {
+        statsGrid.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-value">${trip.stops.length}</div>
+            <div class="stat-label">Stops</div>
+          </div>
+          <div class="stat-card stat-coral">
+            <div class="stat-value">${trip.total_distance_miles}</div>
+            <div class="stat-label">Miles</div>
+          </div>
+          <div class="stat-card stat-teal">
+            <div class="stat-value">${trip.total_drive_time}</div>
+            <div class="stat-label">Drive Time</div>
+          </div>
+          <div class="stat-card stat-yellow">
+            <div class="stat-value">${trip.fuel_gallons}</div>
+            <div class="stat-label">Gallons</div>
+          </div>
+          <div class="stat-card stat-pink">
+            <div class="stat-value">$${trip.fuel_cost}</div>
+            <div class="stat-label">Fuel Cost</div>
+          </div>
+        `;
+        document.getElementById('stats-card').classList.remove('hidden');
+      } else if (trip.stops.length < 2) {
+        statsGrid.innerHTML = '<div class="empty">Add 2+ stops to see route stats.</div>';
+      }
+
+      // === Legs ===
       const legsSection = document.getElementById('legs-section');
       const legsBody = document.getElementById('legs-body');
       if (trip.legs && trip.legs.length > 0) {
@@ -184,68 +644,50 @@
         legsSection.classList.add('hidden');
       }
 
-      // Stops
-      const stopsList = document.getElementById('stops-list');
-      if (trip.stops.length === 0) {
-        stopsList.innerHTML = '<div class="empty">No stops added yet.</div>';
-      } else {
-        stopsList.innerHTML = `<table><thead><tr><th>#</th><th>Name</th><th>Lat</th><th>Lon</th><th></th></tr></thead><tbody>` +
-          trip.stops.map(s =>
-            `<tr><td>${s.index}</td><td>${s.name}</td><td>${s.lat}</td><td>${s.lon}</td>
-             <td><button class="btn-danger btn-sm" onclick="removeStop(${s.index})">Remove</button></td></tr>`
-          ).join('') + `</tbody></table>`;
-      }
-
-      // Fuel
+      // === Fuel ===
       document.getElementById('fuel-mpg').value = trip.fuel_config.mpg;
       document.getElementById('fuel-price').value = trip.fuel_config.price_per_gallon;
 
-      // Checklist
+      // === Checklist ===
       const checklistEl = document.getElementById('checklist-items');
       if (trip.checklist.length === 0) {
-        checklistEl.innerHTML = '<div class="empty">No items in checklist.</div>';
+        checklistEl.innerHTML = '<div class="empty">No items yet.</div>';
       } else {
         checklistEl.innerHTML = trip.checklist.map((c, i) =>
           `<div class="checklist-item ${c.checked ? 'checked' : ''}">
-            <input type="checkbox" ${c.checked ? 'checked' : ''} onchange="toggleCheck(${i}, this.checked)" />
-            <span>${c.item}</span>
-            <button class="btn-danger btn-sm" onclick="removeChecklistItem(${i})">Remove</button>
+            <input type="checkbox" class="checklist-cb" ${c.checked ? 'checked' : ''} onchange="toggleCheck(${i}, this.checked)" />
+            <span class="checklist-text">${c.item}</span>
+            <button class="btn-danger btn-sm" onclick="removeChecklistItem(${i})">x</button>
           </div>`
         ).join('');
       }
 
-      // Days
+      // === Days ===
       const daysList = document.getElementById('days-list');
       if (trip.days.length === 0) {
         daysList.innerHTML = '<div class="empty">No daily itinerary set.</div>';
       } else {
         daysList.innerHTML = trip.days.map(d => {
-          let info = `<strong>Day ${d.day}:</strong> ${d.stops.join(' &rarr; ')}`;
-          if (d.distance_miles) info += ` &mdash; ${d.distance_miles} mi, ${d.drive_time}, $${d.fuel_cost}`;
-          return `<div style="padding:0.4rem 0;display:flex;align-items:center;gap:0.5rem">${info}
-            <button class="btn-danger btn-sm" onclick="removeDay(${d.day})">Remove</button></div>`;
+          let statsStr = '';
+          if (d.distance_miles) statsStr = `${d.distance_miles} mi \u2022 ${d.drive_time} \u2022 $${d.fuel_cost}`;
+          return `<div class="day-card">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="day-header">Day ${d.day}</div>
+              <button class="btn-danger btn-sm" onclick="removeDay(${d.day})">x</button>
+            </div>
+            <div class="day-route">${d.stops.join(' \u2192 ')}</div>
+            ${statsStr ? `<div class="day-stats">${statsStr}</div>` : ''}
+          </div>`;
         }).join('');
       }
+
+      // === Update Map ===
+      updateMapMarkers(trip.stops);
+      updateRouteLine(trip.stops);
+      fitMapToStops(trip.stops);
     }
 
-    async function createTrip() {
-      const name = document.getElementById('new-trip-name').value.trim();
-      if (!name) return;
-      await api('/api/trips', { method: 'POST', body: JSON.stringify({ name }) });
-      document.getElementById('new-trip-name').value = '';
-      currentTrip = name;
-      await loadTrips();
-      await loadTrip(name);
-    }
-
-    async function deleteTrip() {
-      if (!currentTrip || !confirm(`Delete trip "${currentTrip}"?`)) return;
-      await api(`/api/trips/${encodeURIComponent(currentTrip)}`, { method: 'DELETE' });
-      currentTrip = null;
-      document.getElementById('trip-detail').style.display = 'none';
-      await loadTrips();
-    }
-
+    // === Stop Actions ===
     async function addStop() {
       const name = document.getElementById('stop-name').value.trim();
       const lat = parseFloat(document.getElementById('stop-lat').value);
@@ -265,6 +707,7 @@
       await loadTrip(currentTrip);
     }
 
+    // === Fuel ===
     async function updateFuel() {
       const mpg = parseFloat(document.getElementById('fuel-mpg').value);
       const price = parseFloat(document.getElementById('fuel-price').value);
@@ -275,13 +718,15 @@
       await loadTrip(currentTrip);
     }
 
+    // === Checklist ===
     async function addChecklistItem() {
-      const item = document.getElementById('checklist-item').value.trim();
+      const input = document.getElementById('checklist-item');
+      const item = input.value.trim();
       if (!item) return;
       await api(`/api/trips/${encodeURIComponent(currentTrip)}/checklist`, {
         method: 'POST', body: JSON.stringify({ item })
       });
-      document.getElementById('checklist-item').value = '';
+      input.value = '';
       await loadTrip(currentTrip);
     }
 
@@ -296,6 +741,7 @@
       await loadTrip(currentTrip);
     }
 
+    // === Days ===
     async function addDay() {
       const day = parseInt(document.getElementById('day-num').value);
       const stopsStr = document.getElementById('day-stops').value.trim();
@@ -314,7 +760,33 @@
       await loadTrip(currentTrip);
     }
 
-    // Init
+    // === Mobile Toggle ===
+    function toggleMobile() {
+      const sidebar = document.getElementById('sidebar');
+      const mapContainer = document.querySelector('.map-container');
+      sidebar.classList.toggle('collapsed');
+      mapContainer.classList.toggle('expanded');
+      // Fix map rendering after resize
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+
+    // === Enter key support on inputs ===
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const id = e.target.id;
+      if (id === 'new-trip-name') createTrip();
+      else if (id === 'stop-lon' || id === 'stop-lat' || id === 'stop-name') addStop();
+      else if (id === 'checklist-item') addChecklistItem();
+      else if (id === 'day-stops' || id === 'day-num') addDay();
+      else if (id === 'popup-stop-name') {
+        // Get lat/lon from the popup and confirm
+        const btn = document.querySelector('.popup-add-btn');
+        if (btn) btn.click();
+      }
+    });
+
+    // === Init ===
+    initMap();
     loadTrips();
   </script>
 </body>

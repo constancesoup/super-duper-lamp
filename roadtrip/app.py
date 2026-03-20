@@ -2,6 +2,7 @@
 
 import os
 import json
+import urllib.request
 from pathlib import Path
 
 from flask import Flask, request, jsonify, render_template
@@ -97,6 +98,33 @@ def _trip_summary_dict(trip: Trip) -> dict:
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+# --- Geocoding Proxy ---
+
+@app.route("/api/geocode/reverse")
+def api_reverse_geocode():
+    lat = request.args.get("lat")
+    lon = request.args.get("lon")
+    if lat is None or lon is None:
+        return jsonify({"error": "lat and lon are required"}), 400
+    url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+    req = urllib.request.Request(url, headers={"User-Agent": "RoadtripPlanner/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        name = data.get("display_name", f"{lat}, {lon}")
+        # Use a shorter name: city/town + state if available
+        addr = data.get("address", {})
+        short = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("hamlet") or ""
+        state = addr.get("state", "")
+        if short and state:
+            name = f"{short}, {state}"
+        elif short:
+            name = short
+        return jsonify({"name": name, "lat": float(lat), "lon": float(lon)})
+    except Exception:
+        return jsonify({"name": f"{lat}, {lon}", "lat": float(lat), "lon": float(lon)})
 
 
 # --- API Routes ---
